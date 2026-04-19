@@ -1,70 +1,60 @@
-const logModel = require('../models/logModel');
 const pool = require('../config/db');
 
-// CREATE LOG + AUTO NOTIFICATION
-exports.createLog = async (req, res) => {
+// ================= GET ALL LOGS =================
+const getAllLogs = async (req, res) => {
   try {
-    const { batch_id, user_id, location_id, stage, status } = req.body;
+    const [rows] = await pool.query(
+      'SELECT * FROM AuditLogs ORDER BY timestamp DESC'
+    );
 
-    console.log("Incoming request:", req.body);
-
-    // Basic validation
-    if (!batch_id || !user_id || !location_id || !stage) {
-      return res.status(400).json({
-        message: 'batch_id, user_id, location_id, and stage are required',
-      });
-    }
-
-    //  Create log
-    const result = await logModel.createLog({
-      batch_id,
-      user_id,
-      location_id,
-      stage,
-      status,
-    });
-
-    console.log("Log created, ID:", result.insertId);
-
-    //  AUTO CREATE NOTIFICATION
-    try {
-      const notifResult = await pool.query(
-        `INSERT INTO Notifications (user_id, message)
-         VALUES (?, ?)`,
-        [
-          user_id,
-          `New log added: ${stage} stage`
-        ]
-      );
-
-      console.log("Notification inserted:", notifResult);
-
-    } catch (notifError) {
-      console.error("Notification insert failed:", notifError);
-    }
-
-    //  Response
-    res.status(201).json({
-      message: 'Log created successfully',
-      log_id: result.insertId,
-    });
-
+    res.json(rows);
   } catch (error) {
-    console.error('createLog error:', error);
+    console.error('Get all logs error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// GET LOGS BY BATCH
-exports.getLogsByBatch = async (req, res) => {
+// ================= GET LOGS BY BATCH =================
+const getLogsByBatch = async (req, res) => {
   try {
-    const batchId = req.params.batchId;
+    const { batchId } = req.params;
 
-    const logs = await logModel.getLogsByBatch(batchId);
+    const [rows] = await pool.query(
+      'SELECT * FROM AuditLogs WHERE batch_id = ? ORDER BY timestamp DESC',
+      [batchId]
+    );
 
-    res.json(logs);
+    res.json(rows);
   } catch (error) {
-    console.error('getLogsByBatch error:', error);
+    console.error('Get logs by batch error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+};
+
+// ================= CREATE LOG =================
+const createLog = async (req, res) => {
+  try {
+    const { batch_id, action } = req.body;
+
+    // user from token
+    const user_id = req.user.user_id;
+
+    await pool.query(
+      'INSERT INTO AuditLogs (batch_id, user_id, action) VALUES (?, ?, ?)',
+      [batch_id, user_id, action]
+    );
+
+    res.status(201).json({
+      message: 'Log created successfully',
+    });
+  } catch (error) {
+    console.error('Create log error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = {
+  getAllLogs,
+  getLogsByBatch,
+  createLog,
 };

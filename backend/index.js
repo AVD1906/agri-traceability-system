@@ -9,6 +9,12 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const certificationRoutes = require('./routes/certificationRoutes');
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+
+// ✅ NEW: error handlers
+const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 const app = express();
 
@@ -28,6 +34,13 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/certifications', certificationRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
+// ✅ MUST BE LAST (very important)
+app.use(notFound);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
