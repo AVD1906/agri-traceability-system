@@ -1,15 +1,58 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { jwtDecode } from "jwt-decode"; // ✅ NEW
+
+const API = "http://localhost:5000/api";
 
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const location = useLocation();
 
-  const notifications = [
-    "Batch added successfully",
-    "Certificate verified",
-    "New log created",
-  ];
+  // 🔥 DECODE USER FROM TOKEN
+  const token = localStorage.getItem("token");
+
+  let role = "User";
+  let email = "";
+
+  if (token) {
+    try {
+      const decoded = jwtDecode(token);
+
+      const roleMap = {
+        1: "Admin",
+        2: "Farmer",
+        3: "Distributor",
+      };
+
+      role = roleMap[decoded.role_id] || "User";
+      email = decoded.email || "";
+
+    } catch (err) {
+      console.error("Token decode error:", err);
+    }
+  }
+
+  // 🔥 FETCH REAL NOTIFICATIONS
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch(`${API}/notifications`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Notification error:", err);
+      setNotifications([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   const menuItems = [
     { name: "Dashboard", path: "/dashboard" },
@@ -19,6 +62,8 @@ export default function Layout({ children }) {
     { name: "Locations", path: "/locations" },
     { name: "Reports", path: "/reports" },
     { name: "Audit Logs", path: "/audit-logs" },
+    { name: "Notifications", path: "/notifications" },
+    { name: "Certificates", path: "/certificates" },
   ];
 
   return (
@@ -27,8 +72,8 @@ export default function Layout({ children }) {
       {/* SIDEBAR */}
       <div className="w-64 p-5 bg-[#020617]/70 backdrop-blur-xl border-r border-white/10 shadow-xl">
 
-        <h1 className="text-2xl font-bold text-green-400 mb-8 flex items-center gap-2">
-             AgriTrace
+        <h1 className="text-2xl font-bold text-green-400 mb-8">
+          AgriTrace
         </h1>
 
         <nav className="flex flex-col gap-3">
@@ -54,7 +99,10 @@ export default function Layout({ children }) {
         {/* FOOTER */}
         <div className="mt-10 p-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/10">
           <p className="text-sm text-gray-300">Signed in as</p>
-          <p className="text-green-400 font-semibold">Farmer</p>
+          <p className="text-green-400 font-semibold">{role}</p>
+          {email && (
+            <p className="text-xs text-gray-400 mt-1">{email}</p>
+          )}
         </div>
       </div>
 
@@ -64,22 +112,42 @@ export default function Layout({ children }) {
         {/* 🔔 NOTIFICATION */}
         <div className="absolute top-6 right-6 z-50">
           <button
-            onClick={() => setOpen(!open)}
+            onClick={() => {
+              setOpen(!open);
+              fetchNotifications(); // ✅ refresh on click
+            }}
             className="bg-white/10 backdrop-blur-md p-2 rounded-full hover:bg-white/20 transition"
           >
             🔔
           </button>
 
           {open && (
-            <div className="absolute right-0 mt-3 w-64 bg-white/10 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-lg">
-              {notifications.map((n, i) => (
-                <div
-                  key={i}
-                  className="p-2 hover:bg-white/20 rounded"
-                >
-                  {n}
-                </div>
-              ))}
+            <div className="absolute right-0 mt-3 w-72 bg-white/10 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-lg">
+
+              {notifications.length === 0 ? (
+                <p className="text-gray-300 text-sm">No notifications</p>
+              ) : (
+                notifications.slice(0, 5).map((n) => (
+                  <div
+                    key={n.notification_id}
+                    className="p-2 hover:bg-white/20 rounded"
+                  >
+                    <p className="text-sm">{n.message}</p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(n.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              )}
+
+              {/* VIEW ALL */}
+              <Link
+                to="/notifications"
+                className="block text-center text-green-400 text-sm mt-2 hover:underline"
+              >
+                View all
+              </Link>
+
             </div>
           )}
         </div>

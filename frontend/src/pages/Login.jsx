@@ -1,7 +1,59 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+const API = "http://localhost:5000/api";
 
 export default function Login() {
   const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      alert("Please enter email and password");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      console.log("LOGIN RESPONSE:", data); // 🔍 debug
+
+      // 🔴 IMPORTANT CHECK
+      if (res.ok && data.token) {
+        // ✅ STORE TOKEN
+        localStorage.setItem("token", data.token);
+
+        console.log("TOKEN STORED:", data.token);
+
+        // optional: store user also
+        localStorage.setItem("user", JSON.stringify(data.user || {}));
+
+        // redirect
+        navigate("/dashboard");
+      } else {
+        alert(data.message || "Login failed");
+      }
+
+    } catch (err) {
+      console.error("LOGIN ERROR:", err);
+      alert("Server error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-6">
@@ -59,6 +111,8 @@ export default function Login() {
 
               <input
                 placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full p-3 rounded-lg 
                 bg-white/10 text-white placeholder-gray-300
                 border border-white/20
@@ -68,18 +122,20 @@ export default function Login() {
               <input
                 type="password"
                 placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full p-3 rounded-lg 
                 bg-white/10 text-white placeholder-gray-300
                 border border-white/20
                 focus:ring-2 focus:ring-emerald-500 outline-none"
               />
 
-              {/* 🔥 NAVIGATION ADDED HERE */}
               <button
-                onClick={() => navigate("/dashboard")}
+                onClick={handleLogin}
+                disabled={loading}
                 className="w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg shadow-lg"
               >
-                Continue →
+                {loading ? "Logging in..." : "Continue →"}
               </button>
 
             </div>

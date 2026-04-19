@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { getProducts, getLocations, createBatch } from "../api";
 
+const API = "http://localhost:5000/api";
+
 export default function Batches() {
   const [products, setProducts] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -14,57 +16,104 @@ export default function Batches() {
     date: "",
   });
 
-  // FETCH DATA
-  useEffect(() => {
-    getProducts()
-      .then(setProducts)
-      .catch(() => {
-        setProducts([{ id: 1, name: "Tomato" }]);
+  // 🔥 FETCH DATA
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const p = await getProducts();
+      const formattedProducts = (p || []).map((item) => ({
+        ...item,
+        id: item.product_id,
+        name: item.name || item.product_name,
+      }));
+      setProducts(formattedProducts);
+
+      const l = await getLocations();
+      const formattedLocations = (l || []).map((item) => ({
+        ...item,
+        id: item.location_id,
+        name: item.name,
+      }));
+      setLocations(formattedLocations);
+
+      const res = await fetch(`${API}/batches`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
-    getLocations()
-      .then(setLocations)
-      .catch(() => {
-        setLocations([{ id: 1, name: "Farm" }]);
-      });
-  }, []);
+      const b = await res.json();
 
-  // ADD BATCH
-  const addBatch = () => {
-    if (!form.product_id || !form.quantity || !form.location_id) return;
+      if (Array.isArray(b)) setBatches(b);
+      else if (Array.isArray(b.data)) setBatches(b.data);
+      else if (Array.isArray(b.batches)) setBatches(b.batches);
+      else setBatches([]);
 
-    createBatch(form);
-
-    setBatches([
-      ...batches,
-      {
-        id: Date.now(),
-        ...form,
-        created_at: new Date().toLocaleString(),
-      },
-    ]);
-
-    setForm({
-      product_id: "",
-      quantity: "",
-      location_id: "",
-      status: "Pending",
-      date: "",
-    });
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setBatches([]);
+    }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // 🔥 ADD BATCH
+  const addBatch = async () => {
+    if (!form.product_id || !form.quantity || !form.location_id) {
+      alert("Fill all required fields");
+      return;
+    }
+
+    try {
+      await createBatch(form);
+
+      setForm({
+        product_id: "",
+        quantity: "",
+        location_id: "",
+        status: "Pending",
+        date: "",
+      });
+
+      fetchData();
+    } catch (err) {
+      console.error("Error adding batch:", err);
+      alert("Failed to add batch");
+    }
+  };
+
+  // 🔥 VERIFY BATCH
+  const verifyBatch = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await fetch(`${API}/batches/verify/${id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      fetchData(); // refresh UI
+    } catch (err) {
+      console.error("Verify error:", err);
+    }
+  };
+
+  // helper
   const getName = (list, id) =>
     list.find((i) => String(i.id) === String(id))?.name || id;
 
   return (
     <div className="p-6 space-y-6">
-
       <h1 className="text-2xl font-bold">Batches</h1>
 
       {/* FORM */}
       <div className="bg-white/10 p-4 rounded grid md:grid-cols-6 gap-3">
 
-        {/* PRODUCT */}
         <select
           value={form.product_id}
           onChange={(e) =>
@@ -80,7 +129,6 @@ export default function Batches() {
           ))}
         </select>
 
-        {/* QUANTITY */}
         <input
           placeholder="Quantity"
           value={form.quantity}
@@ -90,7 +138,6 @@ export default function Batches() {
           className="p-2 bg-white/10 rounded"
         />
 
-        {/* LOCATION */}
         <select
           value={form.location_id}
           onChange={(e) =>
@@ -106,7 +153,6 @@ export default function Batches() {
           ))}
         </select>
 
-        {/* DATE */}
         <input
           type="date"
           value={form.date}
@@ -116,7 +162,6 @@ export default function Batches() {
           className="p-2 bg-white/10 rounded"
         />
 
-        {/* STATUS */}
         <select
           value={form.status}
           onChange={(e) =>
@@ -129,10 +174,9 @@ export default function Batches() {
           <option>Rejected</option>
         </select>
 
-        {/* BUTTON */}
         <button
           onClick={addBatch}
-          className="bg-green-600 hover:bg-green-500 rounded"
+          className="bg-green-600 hover:bg-green-500 text-white rounded"
         >
           Add
         </button>
@@ -140,17 +184,13 @@ export default function Batches() {
 
       {/* LIST */}
       <div className="relative pl-6 space-y-6">
-
-        {/* vertical line */}
         <div className="absolute left-2 top-0 bottom-0 w-[2px] bg-white/20"></div>
 
-        {batches.map((b) => (
-          <div key={b.id} className="relative">
+        {(Array.isArray(batches) ? batches : []).map((b) => (
+          <div key={b.batch_id} className="relative">
 
-            {/* DOT */}
             <div className="absolute -left-[10px] top-5 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
 
-            {/* CARD */}
             <div className="bg-white/10 p-4 rounded ml-4">
 
               <p className="font-semibold text-lg">
@@ -158,9 +198,11 @@ export default function Batches() {
               </p>
 
               <p className="text-sm text-gray-300">
-                Qty: {b.quantity} | {getName(locations, b.location_id)}
+                Qty: {b.quantity}
+                {b.location_id && ` | ${getName(locations, b.location_id)}`}
               </p>
 
+              {/* 🔥 STATUS */}
               <p className="text-sm mt-1">
                 Status:{" "}
                 <span
@@ -172,19 +214,28 @@ export default function Batches() {
                       : "text-yellow-400"
                   }
                 >
-                  {b.status}
+                  {b.status || "Pending"}
                 </span>
               </p>
 
+              {/* 🔥 VERIFY BUTTON */}
+              {b.status !== "Verified" && (
+                <button
+                  onClick={() => verifyBatch(b.batch_id)}
+                  className="bg-blue-600 px-3 py-1 rounded mt-2"
+                >
+                  Verify
+                </button>
+              )}
+
               <p className="text-xs text-gray-400 mt-1">
-                {b.created_at}
+                {b.created_at || b.date || "No date"}
               </p>
 
             </div>
           </div>
         ))}
       </div>
-
     </div>
   );
 }

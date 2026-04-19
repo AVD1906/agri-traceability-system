@@ -1,14 +1,16 @@
 const pool = require('../config/db');
 
-// CREATE
+// ================= CREATE =================
 const createNotification = async (user_id, message) => {
+  console.log("📦 INSERTING NOTIFICATION:", user_id, message); // 🔥 DEBUG
+
   await pool.query(
     `INSERT INTO Notifications (user_id, message) VALUES (?, ?)`,
     [user_id, message]
   );
 };
 
-// GET
+// ================= GET =================
 const getNotifications = async (userId) => {
   const [rows] = await pool.query(
     `SELECT * FROM Notifications WHERE user_id = ? ORDER BY created_at DESC`,
@@ -17,7 +19,7 @@ const getNotifications = async (userId) => {
   return rows;
 };
 
-// MARK AS READ
+// ================= MARK AS READ =================
 const markAsRead = async (id) => {
   await pool.query(
     `UPDATE Notifications SET status = 'Read' WHERE notification_id = ?`,

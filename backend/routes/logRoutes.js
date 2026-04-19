@@ -5,13 +5,13 @@ const logController = require('../controllers/logController');
 const authMiddleware = require('../middleware/authMiddleware');
 const { adminOnly } = require('../middleware/roleCheck');
 
-// GET ALL LOGS (admin only)
-router.get('/', authMiddleware, adminOnly, logController.getAllLogs);
+// ✅ CREATE LOG (any authenticated user)
+router.post('/', authMiddleware, logController.createLog);
 
-// GET LOGS BY BATCH
+// ✅ GET LOGS BY BATCH (any authenticated user)
 router.get('/:batchId', authMiddleware, logController.getLogsByBatch);
 
-// CREATE LOG
-router.post('/', authMiddleware, logController.createLog);
+// ✅ GET ALL LOGS (admin only)
+router.get('/', authMiddleware, adminOnly, logController.getAllLogs);
 
 module.exports = router;

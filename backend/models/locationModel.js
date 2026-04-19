@@ -1,8 +1,7 @@
 const pool = require('../config/db');
 
-const createLocation = async (location) => {
-  const { name, type, address } = location;
-
+// CREATE LOCATION
+const createLocation = async ({ name, type, address }) => {
   const [result] = await pool.query(
     `INSERT INTO Locations (name, type, address) VALUES (?, ?, ?)`,
     [name, type, address]
@@ -11,8 +10,11 @@ const createLocation = async (location) => {
   return result;
 };
 
+// GET ALL
 const getAllLocations = async () => {
-  const [rows] = await pool.query(`SELECT * FROM Locations`);
+  const [rows] = await pool.query(
+    `SELECT * FROM Locations ORDER BY location_id DESC`
+  );
   return rows;
 };
 

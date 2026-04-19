@@ -13,6 +13,8 @@ import Logs from "./pages/Logs";
 import Locations from "./pages/Locations";
 import Reports from "./pages/Reports";
 import Audit from "./pages/Audit";
+import Notifications from "./pages/Notifications"; // ✅ ADD THIS
+import Certificates from "./pages/Certificates";
 
 function App() {
   return (
@@ -33,6 +35,10 @@ function App() {
         <Route path="/locations" element={<Layout><Locations /></Layout>} />
         <Route path="/reports" element={<Layout><Reports /></Layout>} />
         <Route path="/audit-logs" element={<Layout><Audit /></Layout>} />
+
+        {/* 🔥 NEW ROUTE */}
+        <Route path="/notifications" element={<Layout><Notifications /></Layout>} />
+        <Route path="/certificates" element={<Layout><Certificates /></Layout>} />
 
       </Routes>
     </Router>
